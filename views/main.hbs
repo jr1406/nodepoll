@@ -1,0 +1,226 @@
+<style>
+    #divModal{
+        height: 40%;
+    }
+    #whole {
+        padding: 20px;
+    }
+</style>
+
+<div id="whole">
+
+<table class="striped">
+    <thead>
+    <tr>
+        <th data-field="num"><b>No.</b></th>
+        <th data-field="cate"><b>Category</b></th>
+        <th data-field="topic"><b>T o p i c</b></th>
+        <th data-field="date"><b>Date</b></th>
+        <th data-field="status"><b>Status</b></th>
+        <th data-field="check"><b>Activate</b></th>
+        <th data-field="url"><b>URL</b></th>
+    </tr>
+    </thead>
+
+    <tbody>
+
+    {{#mnos}}
+        <tr class="tableTr">
+            <td class="aaa" style="text-align: center">{{pno}}</td>
+            <td style="text-align: center">{{categoryCode}}</td>
+            <td><a href="/result/{{pno}}">{{topic}}</a></td>
+            <td style="text-align: center">{{Date regDate}}</td>
+            <td style="text-align: center">{{status}}</td>
+            <!-- Switch -->
+            <td class="switch" style="text-align: center">
+                <label>
+                    종료
+                    <input type="checkbox" class="chk" {{stat status}} >
+                    <!--<input type="hidden" id="pno">-->
+                    <span class="lever"></span>
+                    시작
+                </label>
+            </td>
+            <td style="text-align: center"><a href={{srturl}}>{{srturl}}</a></td>
+        </tr>
+    {{/mnos}}
+
+
+    </tbody>
+</table>
+
+
+
+
+
+<div id="divModal" class="modal center-align">
+    <div class="modal-content" style="background-color: #00bfa5">
+        <h4>인증번호를 입력해 주세요</h4>
+    </div>
+    <div id="footerDiv" style="background-color: #cddc39 "></div>
+    <div class="input-field col s12">
+        <i class="material-icons prefix">account_circle</i>
+        <input id="inputText" type="text" class="validate">
+        <label for="icon_prefix">인증번호</label>
+    </div>
+    <div>
+        <button id="checkBtn" class="waves-effect waves-light btn-large">확인</button>
+        <button id="cancelBtn"  class="waves-effect waves-light btn-large">취소</button>
+    </div>
+
+</div>
+</div>
+
+
+<script src="https://apis.google.com/js/client.js"> </script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+
+    $(window).load(function() {
+        gapi.client.setApiKey('AIzaSyB2v3EGxO_F95V3SlEjqLDkhinBXJJWei0'); //get your ownn Browser API KEY
+        gapi.client.load('urlshortener', 'v1',function(){});
+    });
+
+    console.log({{mnos.0.mno}}+"의 투표");
+
+    var socket = io();
+
+    $(function(){
+
+        var target;
+        var pno;
+        var validation;
+        var active;
+
+        $("#cancelBtn").on("click",function(){
+
+            $('#divModal').closeModal();
+            $("#inputText").val("");
+
+            /*var tarcheck = target.find("input");
+            console.log(tarcheck);
+            tarcheck.attr("checked",false);*/
+        });
+
+
+
+        $("#divModal #checkBtn").on("click",function(){
+
+            console.log("---------------------");
+            console.log($("#divModal #checkBtn").size());
+
+
+            var text = $("#inputText").val();
+            console.log("누른거: "+text);
+            console.log("인증번호: "+validation);
+
+            console.log("pno?: "+pno);
+
+            console.log("---------------------");
+
+            if(text==validation){
+
+                var tarcheck = target.find("input");
+
+                if(active) {
+                    socket.emit("make result", pno);
+
+                    $("#footerDiv").append("<h3>인증되었습니다.</h3>");
+                    $('#divModal').closeModal();
+                    $("#inputText").val("");
+
+                    console.log("shorten pno: "+pno);
+
+                    var longUrl = "http://192.168.28:3000/poll/" + pno;
+                    var request = gapi.client.urlshortener.url.insert({
+                        'resource': {
+                            'longUrl': longUrl
+                        }
+                    });
+
+                    request.execute(function (response) {
+                        var str = "<a href='" + response.id + "'>" + response.id + "</a>";
+                        var srturl = response.id;
+                        target.children().last().html(str);
+                        target.children().last().prev().prev().html("activate");
+
+
+                        $.ajax({
+                            url: "/poll/active",
+                            type: "POST",
+                            dataType: "json",
+                            data:{"pno":pno, "status":"activate", "srturl":srturl},
+                            success: function() {
+                                console.log("success");
+
+                            }
+                        });
+                    });
+
+                    tarcheck.prop("checked", true);
+
+                }else{
+
+                    target.children().last().empty();
+                    target.children().last().prev().prev().html("closed");
+
+                    $.ajax({
+                        url: "/poll/active",
+                        dataType: "json",
+                        type: "POST",
+                        data:{"pno":pno, "status":"closed", "srturl":""},
+                        success: function() {
+                            console.log("success");
+                        }
+                    });
+
+                    $("#footerDiv").append("<h3>인증되었습니다.</h3>");
+                    $('#divModal').closeModal();
+                    $("#inputText").val("");
+                    tarcheck.prop("checked", false);
+                };
+
+            }else{
+
+                $("#footerDiv").html("<h4><b>다시입력해 주세요</b></h4>");
+                $("#inputText").val("");
+            }
+
+
+
+        });
+
+        $(".chk").on("click", function(event){
+            event.preventDefault();
+            console.log("클릭했다");
+
+            target = $(this).parents("tr");
+            active = $(this).is(":checked");
+
+            var status = target.children().next().next().next().next().html();
+
+            if(status === "closed"){
+                event.preventDefault();
+                return;
+            }
+
+            pno = target.find("td").html();
+            console.log("pno1: "+pno);
+
+            $.getJSON("/connect/getVal/"+pno,function(data){
+                console.log("getJSON한다");
+                var data =data;
+                console.log(data);
+                console.log(data.data);
+                console.log(data.topic);
+                validation=data.data;
+            });
+
+            $("#footerDiv").children().remove();
+
+            $('#divModal').openModal();
+
+        });
+    });
+</script>

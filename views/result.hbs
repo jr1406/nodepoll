@@ -1,0 +1,175 @@
+<style>
+    #whole {
+        padding: 20px;
+    }
+</style>
+<body>
+<script src="http://code.highcharts.com/highcharts.js"></script>
+<div id="whole">
+    <ul class="collapsible" data-collapsible="accordion">
+        <li>
+            <div class="collapsible-header active"><i class="material-icons">assignment</i>POLL</div>
+            <div class="collapsible-body" id="items">
+                <p><h3>Q. {{topic}}</h3></p>
+
+            </div>
+        </li>
+        <li>
+            <div class="collapsible-header"><i class="material-icons">assessment</i>GRAPH</div>
+            <div class="collapsible-body">
+            <span class="badge">
+            <!-- Dropdown Trigger -->
+            <a class='dropdown-button btn' href='#' data-activates='dropdown1'>TYPE</a>
+
+                <!-- Dropdown Structure -->
+            <ul id='dropdown1' class='dropdown-content'>
+                <li><a href="#!">BAR</a></li>
+                <li><a href="#!">PIE</a></li>
+            </ul>
+            </span>
+                <div id="graph" style="width: 50%; height: 70%; margin: 0 auto"></div>
+            </div>
+        </li>
+        <li>
+            <div class="collapsible-header"><i class="material-icons">info</i>INFORMATION</div>
+            <div class="collapsible-body">
+                <p>참여자 정보</p>
+            </div>
+        </li>
+    </ul>
+</div>
+<script>
+    var socket = io();
+
+    $(function () {
+        // Create the chart
+        var pno = {{pno}};
+        var count;
+        var multiple = [];
+        var data = [];
+        var maxNo =  0;
+
+        //항목의 최대값 구하기
+        {{#texts}}
+            if(maxNo < {{No}}){
+                maxNo = {{No}};
+            }
+        {{/texts}}
+
+        for(var i=1; i <= maxNo; i++){
+            {{#texts}}
+                if ("{{No}}" == i) {
+                    $("#items").append('<p><h6>{{No}}. &nbsp;&nbsp;&nbsp;{{Item}} <span class="badge" id="count'+i+'">{{Count}} 명</span></h6></p>');
+                }
+            {{/texts}}
+        }
+
+
+
+        socket.on("resultChange",function(data){
+
+            console.log("데이터 바뀌었단다.");
+
+            getBar();
+        });
+
+        var getBar = function(){
+
+            $.getJSON("/connect/getResult/"+pno,function(result){
+                console.log("getJSON한다");
+                data = result;
+                var total = 0;
+                console.log(data.multi);
+
+                count = data.multi.length;
+                console.log(count);
+
+                for(var i=1; i < count+1; i++){
+                    console.log("gg");
+                    console.log($("#count"+data.multi[i-1].No).text(data.multi[i-1].Count+" 명"));
+                }
+
+
+                for(var i=0; i < count; i++){
+
+                    console.log(data.multi[i]);
+                    console.log(data.multi[i].Count);
+
+                    //투표수구하기.
+                    total += data.multi[i].Count;
+                }
+
+                console.log(total);
+
+                for(var j=0; j<count; j++){
+
+                    var obj = {};
+                    var index = 0;
+                    obj.name = data.multi[j].Item;
+                    obj.y = (data.multi[j].Count / total) * 100;
+                    index = data.multi[j].No;
+                    multiple[index-1] = obj;
+                }//인터넷 안되서 끝났음 내일 구현할거는 인덱스를 넣어서 순서대로 변환되는지? multiple[index] = obj;
+                console.log("끝났다");
+                console.log(multiple);
+
+                $('#graph').highcharts({
+
+                    chart: {
+                        type: 'bar'
+                    },
+
+                    title: {
+                        text: ""
+                    },
+
+                    subtitle: {
+                        text: ""
+                    },
+
+                    xAxis: {
+                        type: 'category'
+
+                    },
+                    yAxis: {
+                        title: {
+                            text: 'Total percent poll'
+                        }
+                    },
+
+                    legend: {
+                        enabled: false
+                    },
+
+                    credits: {
+                        enabled: false
+                    },
+
+                    plotOptions: {
+                        series: {
+                            borderWidth: 0,
+                            dataLabels: {
+                                enabled: true,
+                                format: '{point.y:.1f}%'
+                            },
+                            animation: false
+                        }
+                    },
+
+                    tooltip: {
+                        headerFormat: '<span style="font-size:11px">{series.name}</span><br>',
+                        pointFormat: '<span style="color:{point.color}">{point.name}</span>: <b>{point.y:.2f}%</b> of total<br/>'
+                    },
+
+                    series: [{
+                        name: "poll result",
+                        colorByPoint: true,
+                        data: multiple
+                    }]
+                });
+            });
+        };
+        getBar();
+    });
+</script>
+</body>

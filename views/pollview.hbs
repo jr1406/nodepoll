@@ -1,0 +1,181 @@
+<style>
+    #whole {
+        padding: 20px;
+    }
+</style>
+<div id="whole">
+
+<h3>Q.{{topic}}</h3>
+
+<div class="introFile"></div>
+
+<p>
+    {{#if pollPw}}
+                <div id="divModal" class="modal center-align">
+                <div class="modal-content" style="background-color: #00bfa5">
+                    <h4>인증번호를 입력해 주세요</h4>
+                </div>
+                <div id="footerDiv" style="background-color: #cddc39 "></div>
+                <div class="input-field col s12">
+                    <i class="material-icons prefix">account_circle</i>
+                    <input id="inputPw" type="text" class="validate">
+                    <label for="icon_prefix">인증번호</label>
+                </div>
+                <div>
+                    <button id="pwBtn" class="waves-effect waves-light btn-large">확인</button>
+                    <div id="footerDiv"></div>
+                </div>
+
+            </div>
+    {{/if}}
+</p>
+
+<div class="items"></div>
+
+
+
+<div id="canCheck">
+    <form id="btnForm" method="post" action="/result/{{pno}}">
+        <input id="cookieData" name="cookieData" type="hidden" value="{{cookieData}}">
+        <br><br>
+        <center><button type="button" class="btn waves-effect waves-light" id="Btn">투표하기<i class="material-icons right">send</i></button><br><h5>Poll In Luv</h5></center>
+        <br><br>
+    </form>
+</div>
+
+<div id="canNot">
+    <p>이미 투표에 참여하셨습니다.</p>
+</div>
+</div>
+
+<script>
+    $('#divModal').openModal();
+    var givenPw = {{pollPw}};
+    console.log(givenPw);
+
+    $(document).ready(function(){
+
+
+        $("#pwBtn").on("click",function(){
+
+            var text = $("#inputPw").val();
+
+            console.log(text);
+
+            if(text==givenPw){
+
+                $('#divModal').closeModal();
+
+            }
+
+            else{
+
+                $("#footerDiv").html("<h3>다시입력해 주세요</h3>");
+
+
+            }
+
+
+        });
+
+
+    });
+
+</script>
+
+<script>
+
+    $(function(){
+
+        <!--var visited = {{visited}};-->
+
+        <!--console.log("비짖"+visited+"의 타입 "+typeof (visited));-->
+
+
+        <!--if( Boolean(visited) == true ){-->
+            <!--console.log("방문한적"+visited);-->
+            <!--$("#canCheck").hide();-->
+        <!--}else{-->
+            <!--console.log("방문한적"+visited);-->
+            <!--$("#canNot").hide();-->
+        <!--}-->
+
+        //항목번호 max값 구하기.
+        var maxItemNo = 0;
+        {{#if texts}}
+            {{#texts}}
+                if(maxItemNo < {{pnoItemNo}}){
+                    maxItemNo = {{pnoItemNo}};
+                };
+            {{/texts}}
+        {{/if}}
+        console.log("maxItemNo: "+maxItemNo);
+
+        //설명에 이미지 추가
+        {{#if files}}
+            {{#files}}
+                if("{{pnoFileNo}}" === "0"){
+                    $(".introFile").append("<img src='/imgs{{fullName}}'/>");
+                }
+            {{/files}}
+        {{/if}}
+
+        //항목에 이미지,텍스트 추가
+        for(var i=1; i <= maxItemNo; i++){
+            var itemStr = '<div class="row"><div class="col s12 m3"><div class="card"><div class="card-image">';
+
+            {{#if files}}
+                {{#files}}
+                    if("{{pnoFileNo}}" == i){
+                        itemStr += '<img src="/imgs{{fullName}}">';
+                    }
+                {{/files}}
+            {{/if}}
+
+            {{# if texts}}
+                {{#texts}}
+                    if("{{pnoItemNo}}" == i){
+                        itemStr += '</div><div class="card-action">'+
+                                '<input type="checkbox" class="filled-in" name="chkBoxes" id="filled-in-box-'+i+'" value='+i+'>'+
+                                '<label for="filled-in-box-'+i+'">{{selectItem}}</label>'+
+                                '</div></div></div></div>';
+                    }
+                {{/texts}}
+            {{/if}}
+
+            console.log(itemStr);
+
+            $(".items").append(itemStr);
+        }
+
+        var socket = io();
+        //var chkArr = [];
+
+
+        $("#Btn").on("click", function (event) {
+            event.preventDefault();
+
+            var form = $("#btnForm");
+
+            var clientCheck=[];
+
+
+            $("input[name=chkBoxes]:checked").each(function () {
+                clientCheck.push($(this).val());
+            });
+            console.log(clientCheck);
+
+            var pushData = {
+                pno : {{pno}},
+                clientCheck : clientCheck,
+            };
+
+            socket.emit("client Check", pushData);
+
+            form.submit();
+            /*self.location="/result/{{pno}}";*/
+
+        });//end of btn click
+
+    });
+</script>
